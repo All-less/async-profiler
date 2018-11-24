@@ -42,6 +42,7 @@ const Error Error::OK(NULL);
 //     summary       - dump profiling summary (number of collected samples of each type)
 //     traces[=N]    - dump top N call traces
 //     flat[=N]      - dump top N methods (aka flat profile)
+//     raw           - dump raw, uncompressed samples of call stacks
 //     interval=N    - sampling interval in ns (default: 10'000'000, i.e. 10 ms)
 //     jstackdepth=N - maximum Java stack depth (default: MAX_STACK_FRAMES)
 //     framebuf=N    - size of the buffer for stack frames (default: 1'000'000)
@@ -101,6 +102,8 @@ Error Arguments::parse(const char* args) {
             _dump_traces = value == NULL ? INT_MAX : atoi(value);
         } else if (strcmp(arg, "flat") == 0) {
             _dump_flat = value == NULL ? INT_MAX : atoi(value);
+        } else if (strcmp(arg, "raw") == 0) {
+            _dump_raw = true;
         } else if (strcmp(arg, "interval") == 0) {
             if (value == NULL || (_interval = parseUnits(value)) <= 0) {
                 return Error("interval must be > 0");

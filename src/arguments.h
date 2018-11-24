@@ -86,6 +86,7 @@ class Arguments {
     bool _dump_summary;
     int _dump_traces;
     int _dump_flat;
+    bool _dump_raw;
     // FlameGraph parameters
     const char* _title;
     int _width;
@@ -110,6 +111,7 @@ class Arguments {
         _dump_summary(false),
         _dump_traces(0),
         _dump_flat(0),
+        _dump_raw(0),
         _title("Flame Graph"),
         _width(1200),
         _height(16),
@@ -118,7 +120,7 @@ class Arguments {
     }
 
     bool dumpRequested() {
-        return _dump_collapsed || _dump_flamegraph || _dump_tree || _dump_jfr || _dump_summary || _dump_traces > 0 || _dump_flat > 0;
+        return _dump_collapsed || _dump_flamegraph || _dump_tree || _dump_jfr || _dump_summary || _dump_traces > 0 || _dump_flat > 0 || _dump_raw;
     }
 
     Error parse(const char* args);

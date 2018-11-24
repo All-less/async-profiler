@@ -33,12 +33,14 @@ const char FULL_VERSION_STRING[] =
     "Async-profiler " PROFILER_VERSION " built on " __DATE__ "\n"
     "Copyright 2018 Andrei Pangin\n";
 
+const int MAX_SAMPLE_POINTS = 1024 * 512;
 const int MAX_CALLTRACES    = 65536;
 const int MAX_STACK_FRAMES  = 2048;
 const int MAX_NATIVE_FRAMES = 128;
 const int MAX_NATIVE_LIBS   = 2048;
 const int CONCURRENCY_LEVEL = 16;
 
+const int NO_CALL_TRACE     = -1;
 
 static inline int cmp64(u64 a, u64 b) {
     return a > b ? 1 : a == b ? 0 : -1;
@@ -50,6 +52,15 @@ union CallTraceBuffer {
     jvmtiFrameInfo _jvmti_frames[MAX_STACK_FRAMES];
 };
 
+class SamplePoint {
+  private:
+    u64 _timestamp;
+    int _trace_id;
+
+  public:
+    friend class Profiler;
+    friend class Recording;
+};
 
 class CallTraceSample {
   private:
@@ -136,6 +147,7 @@ class Profiler {
     u64 _hashes[MAX_CALLTRACES];
     CallTraceSample _traces[MAX_CALLTRACES];
     MethodSample _methods[MAX_CALLTRACES];
+    SamplePoint _points[MAX_SAMPLE_POINTS];
 
     SpinLock _locks[CONCURRENCY_LEVEL];
     CallTraceBuffer _calltrace_buffer[CONCURRENCY_LEVEL];
@@ -213,6 +225,7 @@ class Profiler {
     void dumpFlameGraph(std::ostream& out, Arguments& args, bool tree);
     void dumpTraces(std::ostream& out, int max_traces);
     void dumpFlat(std::ostream& out, int max_methods);
+    void dumpRaw(std::ostream& out);
     void recordSample(void* ucontext, u64 counter, jint event_type, jmethodID event);
     NativeCodeCache* jvmLibrary();
     const void* findSymbol(const char* name);

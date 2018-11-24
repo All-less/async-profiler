@@ -4,8 +4,7 @@ set -e  # exit on any failure
 set -x  # print all executed lines
 
 if [ -z "${JAVA_HOME}" ]; then
-  echo "JAVA_HOME is not set"
-  exit 1
+  JAVA_HOME=$(java -cp . JavaHome)
 fi
 
 (
@@ -21,7 +20,7 @@ fi
   JAVAPID=$!
 
   sleep 1     # allow the Java runtime to initialize
-  ../profiler.sh -f $FILENAME -o collapsed -d 5 $JAVAPID
+  ../profiler.sh -f $FILENAME -o raw -d 5 $JAVAPID
 
   kill $JAVAPID
 

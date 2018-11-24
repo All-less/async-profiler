@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
+#include <sys/time.h>
 #include "profiler.h"
 #include "perfEvents.h"
 #include "allocTracer.h"
@@ -63,6 +64,7 @@ int Profiler::storeCallTrace(int num_frames, ASGCT_CallFrame* frames, u64 counte
     int bucket = (int)(hash % MAX_CALLTRACES);
     int i = bucket;
 
+
     while (_hashes[i] != hash) {
         if (_hashes[i] == 0) {
             if (__sync_bool_compare_and_swap(&_hashes[i], 0, hash)) {
@@ -75,7 +77,7 @@ int Profiler::storeCallTrace(int num_frames, ASGCT_CallFrame* frames, u64 counte
         if (++i == MAX_CALLTRACES) i = 0;  // move to next slot
         if (i == bucket) return 0;         // the table is full
     }
-    
+
     // CallTrace hash found => atomically increment counter
     atomicInc(_traces[i]._samples);
     atomicInc(_traces[i]._counter, counter);
@@ -127,7 +129,7 @@ void Profiler::storeMethod(jmethodID method, jint bci, u64 counter) {
             }
             continue;
         }
-        
+
         if (++i == MAX_CALLTRACES) i = 0;  // move to next slot
         if (i == bucket) return;           // the table is full
     }
@@ -322,7 +324,7 @@ bool Profiler::addressInCode(const void* pc) {
             return true;
         }
     }
-    
+
     // This can be some other dynamically generated code, but we don't know it. Better stay safe.
     return false;
 }
@@ -333,6 +335,10 @@ void Profiler::recordSample(void* ucontext, u64 counter, jint event_type, jmetho
         atomicInc(_failures[-ticks_skipped]);  // too many concurrent signals already
         return;
     }
+
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    _points[_total_samples]._timestamp = now.tv_sec * 1000000 + now.tv_usec / 1000;
 
     atomicInc(_total_counter, counter);
 
@@ -368,6 +374,9 @@ void Profiler::recordSample(void* ucontext, u64 counter, jint event_type, jmetho
         storeMethod(frames[0].method_id, frames[0].bci, counter);
         int call_trace_id = storeCallTrace(num_frames, frames, counter);
         _jfr.recordExecutionSample(lock_index, tid, call_trace_id);
+        _points[_total_samples]._trace_id = call_trace_id;
+    } else {
+        _points[_total_samples]._trace_id = NO_CALL_TRACE;
     }
 
     _locks[lock_index].unlock();
@@ -425,6 +434,7 @@ Error Profiler::start(Arguments& args) {
     memset(_hashes, 0, sizeof(_hashes));
     memset(_traces, 0, sizeof(_traces));
     memset(_methods, 0, sizeof(_methods));
+    memset(_points, 0, sizeof(_points));
 
     // Index 0 denotes special call trace with no frames
     _hashes[0] = (u64)-1;
@@ -519,7 +529,7 @@ void Profiler::dumpSummary(std::ostream& out) {
             "Total samples:         %lld\n",
             _total_samples);
     out << buf;
-    
+
     double percent = 100.0 / _total_samples;
     for (int i = 0; i < FAILURE_TYPES; i++) {
         if (_failures[i] > 0) {
@@ -540,7 +550,7 @@ void Profiler::dumpSummary(std::ostream& out) {
 
 /*
  * Dump stacks in FlameGraph input format:
- * 
+ *
  * <frame>;<frame>;...;<topmost frame> <count>
  */
 void Profiler::dumpCollapsed(std::ostream& out, Arguments& args) {
@@ -663,6 +673,34 @@ void Profiler::dumpFlat(std::ostream& out, int max_methods) {
     }
 }
 
+void Profiler::dumpRaw(std::ostream& out) {
+    MutexLocker ml(_state_lock);
+    if (_state != IDLE) return;
+
+    FrameName fn(false, true, _threads);
+    char buf[1024];
+
+    for (int i = 1; i <= _total_samples; i++) {
+        snprintf(buf, sizeof(buf), "--- %lld ms\n", _points[i]._timestamp);
+        out << buf;
+
+        if (_points[i]._trace_id == NO_CALL_TRACE) {
+            out << "  [ 0] [no_call_trace]\n";
+        } else {
+            CallTraceSample& trace = _traces[_points[i]._trace_id];
+            if (trace._num_frames == 0) {
+                out << "  [ 0] [frame_buffer_overflow]\n";
+            }
+            for (int j = 0; j < trace._num_frames; j++) {
+                const char* frame_name = fn.name(_frame_buffer[trace._start_frame + j]);
+                snprintf(buf, sizeof(buf), "  [%2d] %s\n", j, frame_name);
+                out << buf;
+            }
+        }
+        out << "\n";
+    }
+}
+
 void Profiler::runInternal(Arguments& args, std::ostream& out) {
     switch (args._action) {
         case ACTION_START: {
@@ -716,6 +754,7 @@ void Profiler::runInternal(Arguments& args, std::ostream& out) {
             if (args._dump_summary) dumpSummary(out);
             if (args._dump_traces > 0) dumpTraces(out, args._dump_traces);
             if (args._dump_flat > 0) dumpFlat(out, args._dump_flat);
+            if (args._dump_raw) dumpRaw(out);
             break;
         default:
             break;

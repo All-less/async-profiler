@@ -18,7 +18,7 @@ usage() {
     echo "  -b bufsize        frame buffer size"
     echo "  -t                profile different threads separately"
     echo "  -s                simple class names instead of FQN"
-    echo "  -o fmt[,fmt...]   output format: summary|traces|flat|collapsed|svg|tree|jfr"
+    echo "  -o fmt[,fmt...]   output format: summary|traces|flat|collapsed|svg|tree|jfr|raw"
     echo ""
     echo "  --title string    SVG title"
     echo "  --width px        SVG width"
