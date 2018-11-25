@@ -681,7 +681,7 @@ void Profiler::dumpRaw(std::ostream& out) {
     char buf[1024];
 
     for (int i = 1; i <= _total_samples; i++) {
-        snprintf(buf, sizeof(buf), "--- %lld ms\n", _points[i]._timestamp);
+        snprintf(buf, sizeof(buf), "--- %lld us\n", _points[i]._timestamp);
         out << buf;
 
         if (_points[i]._trace_id == NO_CALL_TRACE) {
