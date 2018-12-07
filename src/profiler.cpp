@@ -338,7 +338,7 @@ void Profiler::recordSample(void* ucontext, u64 counter, jint event_type, jmetho
 
     struct timeval now;
     gettimeofday(&now, NULL);
-    _points[_total_samples]._timestamp = now.tv_sec * 1000000 + now.tv_usec / 1000;
+    _points[_total_samples]._timestamp = now.tv_sec * 1000000 + now.tv_usec;
 
     atomicInc(_total_counter, counter);
 
