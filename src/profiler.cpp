@@ -330,14 +330,15 @@ bool Profiler::addressInCode(const void* pc) {
 }
 
 void Profiler::recordSample(void* ucontext, u64 counter, jint event_type, jmethodID event) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
     u64 lock_index = atomicInc(_total_samples) % CONCURRENCY_LEVEL;
     if (!_locks[lock_index].tryLock()) {
         atomicInc(_failures[-ticks_skipped]);  // too many concurrent signals already
         return;
     }
 
-    struct timeval now;
-    gettimeofday(&now, NULL);
     _points[_total_samples]._timestamp = now.tv_sec * 1000000 + now.tv_usec;
 
     atomicInc(_total_counter, counter);

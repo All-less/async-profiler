@@ -28,7 +28,7 @@ else
 endif
 
 
-.PHONY: all release test clean
+.PHONY: all release test clean init-ubuntu init-centos
 
 all: build build/$(LIB_PROFILER) build/$(JATTACH) build/$(PROFILER_JAR)
 
@@ -60,3 +60,11 @@ test: all
 
 clean:
 	rm -rf build
+
+init-ubuntu:
+	sudo apt update -yq
+	sudo apt install -yq build-essential openjdk-8-jdk
+
+init-centos:
+	sudo yum update -yq
+	sudo yum install -yq make automake gcc gcc-c++ kernel-devel java-1.8.0-openjdk-devel
