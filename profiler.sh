@@ -19,7 +19,7 @@ usage() {
     echo "  -t                profile different threads separately"
     echo "  -s                simple class names instead of FQN"
     echo "  -o fmt[,fmt...]   output format: summary|traces|flat|collapsed|svg|tree|jfr|raw"
-    echo "  -m                match keyword to get process id"
+    echo "  -m                match keyword against main class to get process id"
     echo ""
     echo "  --title string    SVG title"
     echo "  --width px        SVG width"
@@ -173,7 +173,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             if [[ "$MATCH_PROCESS" == "true" ]]; then
-                PID=$(pgrep -n -f $1)
+                PID=$(jps | grep $1 | cut -f1 -d ' ')
             elif [[ "$1" == "jps" ]]; then
                 # A shortcut for getting PID of a running Java application
                 # -XX:+PerfDisableSharedMem prevents jps from appearing in its own list
