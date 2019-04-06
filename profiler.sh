@@ -19,6 +19,7 @@ usage() {
     echo "  -t                profile different threads separately"
     echo "  -s                simple class names instead of FQN"
     echo "  -o fmt[,fmt...]   output format: summary|traces|flat|collapsed|svg|tree|jfr|raw"
+    echo "  -m                match keyword to get process id"
     echo ""
     echo "  --title string    SVG title"
     echo "  --width px        SVG width"
@@ -30,6 +31,7 @@ usage() {
     echo ""
     echo "<pid> is a numeric process ID of the target JVM"
     echo "      or 'jps' keyword to find running JVM automatically"
+    echo "      or a keyword to search for process ID if '-m' is set"
     echo ""
     echo "Example: $0 -d 30 -f profile.svg 3456"
     echo "         $0 start -i 999000 jps"
@@ -99,6 +101,7 @@ FRAMEBUF=""
 THREADS=""
 OUTPUT=""
 FORMAT=""
+MATCH_PROCESS=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -139,6 +142,9 @@ while [[ $# -gt 0 ]]; do
         -t)
             THREADS=",threads"
             ;;
+        -m)
+            MATCH_PROCESS="true"
+            ;;
         -s)
             FORMAT="$FORMAT,simple"
             ;;
@@ -165,14 +171,17 @@ while [[ $# -gt 0 ]]; do
         [0-9]*)
             PID="$1"
             ;;
-        jps)
-            # A shortcut for getting PID of a running Java application
-            # -XX:+PerfDisableSharedMem prevents jps from appearing in its own list
-            PID=$(pgrep -n java || jps -q -J-XX:+PerfDisableSharedMem)
-            ;;
         *)
-        	echo "Unrecognized option: $1"
-        	usage
+            if [[ "$MATCH_PROCESS" == "true" ]]; then
+                PID=$(pgrep -n -f $1)
+            elif [[ "$1" == "jps" ]]; then
+                # A shortcut for getting PID of a running Java application
+                # -XX:+PerfDisableSharedMem prevents jps from appearing in its own list
+                PID=$(pgrep -n java || jps -q -J-XX:+PerfDisableSharedMem)
+            else
+                echo "Unrecognized option: $1"
+                usage
+            fi
         	;;
     esac
     shift
